@@ -1,3 +1,5 @@
+# 注意事项
+该仓库默认release分支是根据上游仓库重构前的代码进行修改（dll除外），release分支的东西能用但也就刚刚好能用，该仓库的[master](https://github.com/zhicheng233/NfcAimeReader/tree/master)分支以及上游仓库才是在维护的分支，目前正在对Android客户端进行重构，不过到能用的程度还有很长一段距离，在此之前可以先用release分支的东西凑合着）
 ### 正在使用 jetpack compose 重构💩山
 
 这个项目单纯是边学安卓边做来玩玩，所以进度很慢
