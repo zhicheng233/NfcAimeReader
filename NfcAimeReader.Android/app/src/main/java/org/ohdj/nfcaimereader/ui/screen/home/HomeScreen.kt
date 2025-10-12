@@ -43,11 +43,11 @@ fun HomeScreen(
 
     Column {
         val nfcState by homeViewModel.nfcState.collectAsState()
-        val cardIdm by homeViewModel.cardIdm.collectAsState()
+        val cardAccessCode by homeViewModel.cardAccessCode.collectAsState()
 
         NfcStatusComponent(
             nfcState = nfcState,
-            cardIdm = cardIdm
+            cardAccessCode = cardAccessCode
         )
 
         Spacer(modifier = Modifier.height(16.dp))

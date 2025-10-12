@@ -31,21 +31,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import org.ohdj.nfcaimereader.utils.NfcState
-import java.math.BigInteger
 
 @Composable
-fun NfcStatusComponent(nfcState: NfcState, cardIdm: String?) {
+fun NfcStatusComponent(nfcState: NfcState, cardAccessCode: String?) {
     val context = LocalContext.current
     // 默认十六进制显示
-    val isHex = remember { mutableStateOf(true) }
 
     // 动画过渡的卡片背景颜色
     val animatedCardColor by animateColorAsState(
@@ -72,7 +68,6 @@ fun NfcStatusComponent(nfcState: NfcState, cardIdm: String?) {
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = animatedCardColor),
-        onClick = { isHex.value = !isHex.value }
     ) {
         Column(
             modifier = Modifier.padding(24.dp)
@@ -110,21 +105,14 @@ fun NfcStatusComponent(nfcState: NfcState, cardIdm: String?) {
 
             // 读卡记录显示 - 仅在NFC启用时显示
             AnimatedVisibility(
-                visible = nfcState == NfcState.ENABLED && cardIdm != null,
+                visible = nfcState == NfcState.ENABLED && cardAccessCode != null,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = if (isHex.value) {
-                            "卡号: $cardIdm"
-                        } else {
-                            // 点击卡片转换卡号为十进制
-                            "卡号: " + cardIdm?.let {
-                                BigInteger(it, 16).toString().padStart(20, '0')
-                            }
-                        },
+                        text = "卡号: $cardAccessCode",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -185,7 +173,7 @@ fun NfcStatusComponent(nfcState: NfcState, cardIdm: String?) {
 fun NfcStatusEnabledPreview() {
     NfcStatusComponent(
         nfcState = NfcState.ENABLED,
-        cardIdm = "0123456789ABCDEF"
+        cardAccessCode = "0123456789ABCDEF"
     )
 }
 
@@ -194,7 +182,7 @@ fun NfcStatusEnabledPreview() {
 fun NfcStatusDisabledPreview() {
     NfcStatusComponent(
         nfcState = NfcState.DISABLED,
-        cardIdm = null
+        cardAccessCode = null
     )
 }
 
@@ -203,6 +191,6 @@ fun NfcStatusDisabledPreview() {
 fun NfcStatusUnsupportedPreview() {
     NfcStatusComponent(
         nfcState = NfcState.UNSUPPORTED,
-        cardIdm = null
+        cardAccessCode = null
     )
 }
