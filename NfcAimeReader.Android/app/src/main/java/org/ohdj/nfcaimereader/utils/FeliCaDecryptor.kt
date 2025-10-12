@@ -40,32 +40,28 @@ class FeliCaDecryptor {
         return data
     }
     private fun rotateRight(data: ByteArray, nBytes: Int, nBits: Int) {
-        var prior = data[nBytes - 1]
+        var prior = data[nBytes - 1].toInt() and 0xFF
         for (i in 0 until nBytes) {
-            val temp = data[i]
-            val lowBits = prior.toInt() and ((1 shl nBits) - 1)
-            data[i] = ((temp.toInt() and 0xFF) shr nBits or (lowBits shl (8 - nBits))).toByte()
-            prior = temp
+            val current = data[i].toInt() and 0xFF
+            data[i] = (((current shr nBits) or ((prior and ((1 shl nBits) - 1)) shl (8 - nBits))) and 0xFF).toByte()
+            prior = current
         }
     }
     public fun decrypt(spadInput: ByteArray): ByteArray {
-        val spad = ByteArray(16) { i ->
-            val idx = spadInput[i].toInt() and 0xFF
-            S_BOX_INV[N_TABLES][idx]
+        for (i in spadInput.indices) {
+            spadInput[i] = S_BOX_INV[N_TABLES][spadInput[i].toInt() and 0xFF]
         }
 
-        var count = (spad[15].toInt() ushr 4) + 7
-        var table = (spad[15].toInt() and 0xFF) + ITER_ADD * count
+        val count = ((spadInput[15].toInt() and 0xFF) shr 4) + 7
+        var table = (spadInput[15].toInt() and 0xFF) + ITER_ADD * count
 
         repeat(count) {
             table -= ITER_ADD
-            rotateRight(spad, 15, 5)
+            rotateRight(spadInput, 15, 5)
             for (i in 0 until 15) {
-                val idx = spad[i].toInt() and 0xFF
-                spad[i] = S_BOX_INV[table % N_TABLES][idx]
+                spadInput[i] = S_BOX_INV[table % N_TABLES][spadInput[i].toInt() and 0xFF]
             }
         }
-
-        return spad
+        return spadInput
     }
 }
