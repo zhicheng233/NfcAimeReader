@@ -12,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dagger.hilt.android.AndroidEntryPoint
+import org.ohdj.nfcaimereader.data.datastore.FelicaPreferenceViewModel
 import org.ohdj.nfcaimereader.data.datastore.UserPreferenceViewModel
 import org.ohdj.nfcaimereader.ui.navigation.Navigation
 import org.ohdj.nfcaimereader.ui.theme.NfcAimeReaderTheme
@@ -23,6 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val viewModel: UserPreferenceViewModel = viewModel()
+            val felicaPreferenceViewModel: FelicaPreferenceViewModel = viewModel()
             val themeMode by viewModel.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
             val dynamicColorEnabled by viewModel.dynamicColorEnabled.collectAsState(initial = false)
 
@@ -50,7 +52,7 @@ class MainActivity : ComponentActivity() {
                 darkTheme = darkTheme,
                 dynamicColor = supportsDynamicTheming && dynamicColorEnabled
             ) {
-                Navigation(viewModel)
+                Navigation(viewModel, felicaPreferenceViewModel)
             }
         }
     }

@@ -1,13 +1,14 @@
+import android.annotation.SuppressLint
 import android.nfc.Tag
 import android.nfc.tech.NfcF
 import android.util.Log
 import org.ohdj.nfcaimereader.libs.INFCHandler
-import org.ohdj.nfcaimereader.utils.FeliCaDecryptor
+import org.ohdj.nfcaimereader.libs.FeliCaDecryptor
 import java.io.IOException
 import java.nio.ByteBuffer
 import kotlin.collections.joinToString
 
-class FeliCaHandler(private val nfcF: NfcF): INFCHandler {
+class FeliCaHandler(private val nfcF: NfcF, private val compatibilityMode: Boolean): INFCHandler {
     private val TAG = "FeliCaHandler";
     private fun Short.reverseBytes(): Short {
         val i = this.toInt()
@@ -77,7 +78,9 @@ class FeliCaHandler(private val nfcF: NfcF): INFCHandler {
         }
     }
 
+    @SuppressLint("DefaultLocale")
     override fun getAccessCode(): String? {
+        if (compatibilityMode) return String.format("%020d", nfcF.tag.id.fold(0L) { acc, b -> (acc shl 8) or (b.toInt() and 0xFF).toLong() });
         try {
             nfcF.connect()
             sendPolling()

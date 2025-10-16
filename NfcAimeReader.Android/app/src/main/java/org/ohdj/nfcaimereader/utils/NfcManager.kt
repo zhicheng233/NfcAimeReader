@@ -13,13 +13,18 @@ import android.nfc.tech.MifareClassic
 import android.nfc.tech.NfcF
 import android.os.Build
 import android.util.Log
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.ohdj.nfcaimereader.data.datastore.FelicaPreferenceViewModel
+import org.ohdj.nfcaimereader.data.datastore.felicaDataStore
 import org.ohdj.nfcaimereader.libs.INFCHandler
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -122,24 +127,28 @@ class NfcManager @Inject constructor(
     }
 
     override fun onTagDiscovered(tag: Tag?) {
-        val techList = tag?.techList?.toList()
+        CoroutineScope(Dispatchers.IO).launch {
+            val prefs = context.felicaDataStore.data.first()
+            val felicaCompatibility = prefs[booleanPreferencesKey("felica_compatibility_mode")] ?: true
 
-        var handler: INFCHandler? = null;
-        if (techList?.contains(android.nfc.tech.NfcF::class.java.name) == true) {
-            // felica
-            val nfcF = NfcF.get(tag)
-            handler = FeliCaHandler(nfcF)
-        } else {
-            // m1
-            val mifareClassic = MifareClassic.get(tag)
-            handler = ClassicAiMEHandler(mifareClassic)
+            val techList = tag?.techList?.toList()
+            var handler: INFCHandler? = null
+
+            if (techList?.contains(android.nfc.tech.NfcF::class.java.name) == true) {
+                val nfcF = NfcF.get(tag)
+                handler = FeliCaHandler(nfcF, felicaCompatibility)
+            } else {
+                val mifareClassic = MifareClassic.get(tag)
+                handler = ClassicAiMEHandler(mifareClassic)
+            }
+
+            handler?.apply {
+                val accessCode = getAccessCode()
+                withContext(Dispatchers.Main) {
+                    _cardAccessCode.value = accessCode
+                }
+            }
         }
-
-        handler?.apply {
-            val accessCode = getAccessCode()
-            _cardAccessCode.value = accessCode;
-        }
-
     }
     /**
      * 检查设备是否具有NFC硬件。

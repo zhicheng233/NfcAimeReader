@@ -1,4 +1,4 @@
-package org.ohdj.nfcaimereader.utils
+package org.ohdj.nfcaimereader.libs
 
 class FeliCaDecryptor {
     private val S_BOX = arrayOf(
