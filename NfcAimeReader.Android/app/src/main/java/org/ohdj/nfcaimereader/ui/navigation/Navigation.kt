@@ -54,6 +54,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import org.ohdj.nfcaimereader.BuildConfig
 import org.ohdj.nfcaimereader.R
+import org.ohdj.nfcaimereader.data.datastore.FelicaPreferenceViewModel
 import org.ohdj.nfcaimereader.data.datastore.UserPreferenceViewModel
 import org.ohdj.nfcaimereader.ui.screen.home.HomeScreen
 import org.ohdj.nfcaimereader.ui.screen.setting.SettingScreen
@@ -74,7 +75,7 @@ private val bottomNavItem = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Navigation(viewModel: UserPreferenceViewModel) {
+fun Navigation(viewModel: UserPreferenceViewModel, felicaViewModel: FelicaPreferenceViewModel) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -168,7 +169,7 @@ fun Navigation(viewModel: UserPreferenceViewModel) {
                 WebSocketDetailScreen()
             }
             composable(Screen.Setting.route) {
-                SettingScreen(viewModel)
+                SettingScreen(viewModel, felicaViewModel)
             }
         }
     }

@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import org.ohdj.nfcaimereader.ThemeMode
+import org.ohdj.nfcaimereader.data.datastore.FelicaPreferenceViewModel
 import org.ohdj.nfcaimereader.data.datastore.UserPreferenceViewModel
 import org.ohdj.nfcaimereader.ui.screen.setting.component.SettingSwitchItem
 import org.ohdj.nfcaimereader.ui.screen.setting.component.SettingThemeItem
@@ -23,17 +24,24 @@ data class SettingsUiState(
     val supportsDynamicTheming: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 )
 
+data class felicaState(
+    val felicaCompatibilityMode: Boolean = true,
+)
+
 @Composable
-fun SettingScreen(viewModel: UserPreferenceViewModel) {
-    val uiState by viewModel.settingsUiState.collectAsState(
+fun SettingScreen(userPrefViewModel: UserPreferenceViewModel, felicaViewModel: FelicaPreferenceViewModel) {
+    val uiState by userPrefViewModel.settingsUiState.collectAsState(
         initial = SettingsUiState()
     )
 
-    SettingScreenContent(
-        uiState = uiState,
-        onThemeSelected = { viewModel.updateThemeMode(it) },
-        onDynamicColorChanged = { viewModel.updateDynamicColorEnabled(it) }
-    )
+    Column {
+        SettingScreenContent(
+            uiState = uiState,
+            onThemeSelected = { userPrefViewModel.updateThemeMode(it) },
+            onDynamicColorChanged = { userPrefViewModel.updateDynamicColorEnabled(it) }
+        )
+        FelicaSettingSection(viewModel = felicaViewModel)
+    }
 }
 
 @Composable

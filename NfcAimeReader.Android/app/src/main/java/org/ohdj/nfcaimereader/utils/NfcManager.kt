@@ -1,5 +1,7 @@
 package org.ohdj.nfcaimereader.utils
 
+import ClassicAiMEHandler
+import FeliCaHandler
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -7,28 +9,40 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.nfc.NfcAdapter
 import android.nfc.Tag
+import android.nfc.tech.MifareClassic
+import android.nfc.tech.NfcF
 import android.os.Build
+import android.util.Log
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.ohdj.nfcaimereader.data.datastore.FelicaPreferenceViewModel
+import org.ohdj.nfcaimereader.data.datastore.felicaDataStore
+import org.ohdj.nfcaimereader.libs.INFCHandler
+import java.io.IOException
+import java.nio.ByteBuffer
 import javax.inject.Inject
 import javax.inject.Singleton
+
 
 @Singleton
 class NfcManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) : NfcAdapter.ReaderCallback {
-
+    private val TAG = "NfcManager"
     private val nfcAdapter: NfcAdapter? = NfcAdapter.getDefaultAdapter(context)
     private val applicationScope =
         CoroutineScope(SupervisorJob() + Dispatchers.Default) // 应用级作用域
 
-    private val _cardIdm = MutableStateFlow<String?>(null)
-    val cardIdm = _cardIdm.asStateFlow()
+    private val _cardAccessCode = MutableStateFlow<String?>(null)
+    val cardAccessCode = _cardAccessCode.asStateFlow()
 
     private val _nfcState = MutableStateFlow(determineInitialNfcState())
     val nfcState = _nfcState.asStateFlow()
@@ -104,7 +118,7 @@ class NfcManager @Inject constructor(
             nfcAdapter?.enableReaderMode(
                 activity,
                 this,
-                NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK, // 跳过 NDEF 格式检查
+                NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK, // 跳过 NDEF 格式检查
                 null
             )
         } else {
@@ -113,10 +127,29 @@ class NfcManager @Inject constructor(
     }
 
     override fun onTagDiscovered(tag: Tag?) {
-        val idm = tag?.id?.joinToString("") { String.format("%02X", it) }
-        _cardIdm.value = idm // 更新流，供UI和ViewModel使用
-    }
+        CoroutineScope(Dispatchers.IO).launch {
+            val prefs = context.felicaDataStore.data.first()
+            val felicaCompatibility = prefs[booleanPreferencesKey("felica_compatibility_mode")] ?: true
 
+            val techList = tag?.techList?.toList()
+            var handler: INFCHandler? = null
+
+            if (techList?.contains(android.nfc.tech.NfcF::class.java.name) == true) {
+                val nfcF = NfcF.get(tag)
+                handler = FeliCaHandler(nfcF, felicaCompatibility)
+            } else {
+                val mifareClassic = MifareClassic.get(tag)
+                handler = ClassicAiMEHandler(mifareClassic)
+            }
+
+            handler?.apply {
+                val accessCode = getAccessCode()
+                withContext(Dispatchers.Main) {
+                    _cardAccessCode.value = accessCode
+                }
+            }
+        }
+    }
     /**
      * 检查设备是否具有NFC硬件。
      * @return 如果设备支持NFC则返回true，否则返回false。
