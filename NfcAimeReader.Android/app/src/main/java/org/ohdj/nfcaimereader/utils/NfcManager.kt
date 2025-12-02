@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import org.ohdj.nfcaimereader.data.datastore.FelicaPreferenceViewModel
 import org.ohdj.nfcaimereader.data.datastore.felicaDataStore
 import org.ohdj.nfcaimereader.libs.INFCHandler
+import org.ohdj.nfcaimereader.libs.NfcAHandler
 import java.io.IOException
 import java.nio.ByteBuffer
 import javax.inject.Inject
@@ -127,26 +128,59 @@ class NfcManager @Inject constructor(
     }
 
     override fun onTagDiscovered(tag: Tag?) {
+        if (tag == null) return
+
         CoroutineScope(Dispatchers.IO).launch {
-            val prefs = context.felicaDataStore.data.first()
-            val felicaCompatibility = prefs[booleanPreferencesKey("felica_compatibility_mode")] ?: true
+            try {
+                val prefs = context.felicaDataStore.data.first()
+                val felicaCompatibility = prefs[booleanPreferencesKey("felica_compatibility_mode")] ?: true
 
-            val techList = tag?.techList?.toList()
-            var handler: INFCHandler? = null
+                val techList = tag.techList?.toList() ?: emptyList()
+                var handler: INFCHandler? = null
 
-            if (techList?.contains(android.nfc.tech.NfcF::class.java.name) == true) {
-                val nfcF = NfcF.get(tag)
-                handler = FeliCaHandler(nfcF, felicaCompatibility)
-            } else {
-                val mifareClassic = MifareClassic.get(tag)
-                handler = ClassicAiMEHandler(mifareClassic)
-            }
-
-            handler?.apply {
-                val accessCode = getAccessCode()
-                withContext(Dispatchers.Main) {
-                    _cardAccessCode.value = accessCode
+                // 1. 优先检查 FeliCa (NfcF)
+                if (techList.contains(android.nfc.tech.NfcF::class.java.name)) {
+                    val nfcF = NfcF.get(tag)
+                    if (nfcF != null) {
+                        handler = FeliCaHandler(nfcF, felicaCompatibility)
+                    }
                 }
+                // 2. 其次检查 MifareClassic
+                // 注意：必须先检查这个，因为 MifareClassic 也是 NfcA 的一种
+                else if (techList.contains(android.nfc.tech.MifareClassic::class.java.name)) {
+                    val mifareClassic = MifareClassic.get(tag)
+                    if (mifareClassic != null) {
+                        handler = ClassicAiMEHandler(mifareClassic)
+                    }
+                }
+                // 3. 最后检查通用的 NfcA
+                else if (techList.contains(android.nfc.tech.NfcA::class.java.name)) {
+                    val nfcA = android.nfc.tech.NfcA.get(tag)
+                    if (nfcA != null) {
+                        handler = NfcAHandler(nfcA)
+                    }
+                }
+
+                // 执行 Handler 获取 AccessCode
+                handler?.apply {
+                    try {
+                        val accessCode = getAccessCode()
+                        if (accessCode != null) {
+                            withContext(Dispatchers.Main) {
+                                _cardAccessCode.value = accessCode
+                            }
+                        } else {
+                            Log.w(TAG, "Failed to get Access Code from handler")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing card", e)
+                    }
+                } ?: run {
+                    Log.w(TAG, "Unsupported tag type: $techList")
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Critical error in onTagDiscovered", e)
             }
         }
     }
