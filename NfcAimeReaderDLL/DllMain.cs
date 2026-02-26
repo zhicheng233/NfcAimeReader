@@ -127,6 +127,8 @@ public static class DllMain
         //将卡号复制到缓存区以传递给游戏
         Marshal.Copy(card.CardAccessCode, 0, luid, (int)luidSize);
         Console.WriteLine("Successfully copied card AccessCode to buffer.");
+
+        // Notify connected clients that the card was read
         WebSocketServers.BroadcastMessage(new
         {
             event_type = "card_read",
